@@ -8,8 +8,10 @@
     <h1>Login with Google</h1>
     <button id="login-button">Login with Google</button>
   </div>
-  <div id="user" style="display: none;">
-  </div>
+
+  <div id="user" style="display: none;"></div>
+  <div id="calendar" style="display: none;"></div>
+
   <div id="logout" style="display: none;">
     <h1>Logout</h1>
     <button id="logout-button">Logout</button>
@@ -34,6 +36,19 @@
           document.getElementById('logout').style.display = '';
           document.getElementById('user').style.display = '';
         }
+
+        fetch('/calendar/today')
+          .then(res => res.json())
+          .then(events => {
+            const container = document.getElementById('calendar');
+            container.innerHTML = '';
+            events.forEach(event => {
+              const start = event.start.dateTime || event.start.date;
+              container.innerHTML += `<p>${start} — ${event.summary}</p>`;
+            });
+            document.getElementById('calendar').style.display = '';
+          }
+        );
       }
     );
   </script>
