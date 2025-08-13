@@ -3,6 +3,15 @@ const express = require('express');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const app = express();
 
+const session = require('express-session');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'super-secret-key', // change in prod
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // true if using HTTPS
+}));
+
 const PORT = 3000;
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -10,6 +19,24 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = 'http://localhost:3000/auth/google/callback';
 
 app.use(express.static('public'));
+
+app.get('/me', (req, res) => {
+  if (req.session.user && JSON.stringify(req.session.user) !== '{}') {
+    res.json(req.session.user);
+  } else {
+    res.status(401).json({ error: 'Not logged in' });
+  }
+});
+
+// Logout endpoint
+app.get('/auth/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+    }
+    res.redirect('/');
+  });
+});
 
 // Step 1: Redirect to Google Auth
 app.get('/auth/google', (req, res) => {
@@ -57,7 +84,15 @@ app.get('/auth/google/callback', async (req, res) => {
   });
   const userInfo = await userRes.json();
 
-  res.send(`<h1>Hello, ${userInfo.name}</h1><p>Email: ${userInfo.email}</p>`);
+  // Store minimal info in session
+  req.session.user = {
+    id: userInfo.id,
+    name: userInfo.name,
+    email: userInfo.email,
+    picture: userInfo.picture
+  };
+
+  res.redirect('/'); // redirect to a profile page
 });
 
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));

@@ -4,13 +4,38 @@
   <title>Login with Google</title>
 </head>
 <body>
-  <h1>Login with Google</h1>
-  <button id="login">Login with Google</button>
+  <div id="login">
+    <h1>Login with Google</h1>
+    <button id="login-button">Login with Google</button>
+  </div>
+  <div id="user" style="display: none;">
+  </div>
+  <div id="logout" style="display: none;">
+    <h1>Logout</h1>
+    <button id="logout-button">Logout</button>
+  </div>
 
   <script>
-    document.getElementById('login').addEventListener('click', () => {
+    document.getElementById('login-button').addEventListener('click', () => {
       window.location.href = '/auth/google';
     });
+    document.getElementById('logout-button').addEventListener('click', () => {
+      alert('logout');
+      window.location.href = '/auth/logout';
+    });
+
+    fetch('/me')
+      .then(res => res.json())
+      .then(user => {
+        if (!user.error) {
+          const userDiv = document.getElementById('user');
+          userDiv.innerHTML = `<h1>Welcome, ${user.name}</h1><img src="${user.picture}">`;
+          document.getElementById('login').style.display = 'none';
+          document.getElementById('logout').style.display = '';
+          document.getElementById('user').style.display = '';
+        }
+      }
+    );
   </script>
 </body>
 </html>
