@@ -12,11 +12,11 @@ app.use(session({
   cookie: { secure: false } // true if using HTTPS
 }));
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:3000/auth/google/callback';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI = 'http://localhost:3000/auth/google/callback';
 
 app.use(express.static('public'));
 
