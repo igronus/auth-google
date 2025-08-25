@@ -2,27 +2,198 @@
 <html>
 <head>
   <title>Login with Google</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #6B8E8A 0%, #7B9BA8 100%);
+      min-height: 100vh;
+    }
+
+    .navbar {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .navbar-brand {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .navbar-user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid #667eea;
+    }
+
+    .user-name {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .logout-btn {
+      background: #ff4757;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .logout-btn:hover {
+      background: #ff3742;
+    }
+
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 80px);
+      padding: 2rem;
+    }
+
+    .login-container {
+      background: white;
+      padding: 3rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .login-title {
+      font-size: 2rem;
+      color: #333;
+      margin-bottom: 1.5rem;
+    }
+
+    .login-btn {
+      background: #4285f4;
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+    }
+
+    .login-btn:hover {
+      background: #3367d6;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
+    }
+
+    .calendar-container {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      margin-top: 2rem;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .calendar-title {
+      font-size: 1.5rem;
+      color: #333;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .event-item {
+      padding: 1rem;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .event-item:last-child {
+      border-bottom: none;
+    }
+
+    .event-time {
+      color: #667eea;
+      font-weight: 500;
+      min-width: 120px;
+    }
+
+    .event-summary {
+      color: #333;
+      flex: 1;
+      margin-left: 1rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
 </head>
 <body>
-  <div id="login">
-    <h1>Login with Google</h1>
-    <button id="login-button">Login with Google</button>
-  </div>
+  <!-- Top Navigation Bar -->
+  <nav class="navbar">
+    <div class="navbar-brand">Klaro SalesOne</div>
+    <div class="navbar-user hidden" id="navbar-user">
+      <div class="user-info">
+        <img class="user-avatar" id="user-avatar" src="" alt="User Avatar">
+        <span class="user-name" id="user-name"></span>
+      </div>
+      <button class="logout-btn hidden" id="logout-button">Logout</button>
+    </div>
+  </nav>
 
-  <div id="user" style="display: none;"></div>
-  <div id="calendar" style="display: none;"></div>
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Login Form (centered when not logged in) -->
+    <div class="login-container" id="login">
+      <h1 class="login-title">Welcome Back</h1>
+      <button class="login-btn" id="login-button">Login with Google</button>
+    </div>
 
-  <div id="logout" style="display: none;">
-    <h1>Logout</h1>
-    <button id="logout-button">Logout</button>
+    <!-- Calendar (shown when logged in) -->
+    <div class="calendar-container hidden" id="calendar">
+      <h2 class="calendar-title">Today's Events</h2>
+      <div id="calendar-events"></div>
+    </div>
   </div>
 
   <script>
     document.getElementById('login-button').addEventListener('click', () => {
       window.location.href = '/auth/google';
     });
+    
     document.getElementById('logout-button').addEventListener('click', () => {
-      alert('logout');
       window.location.href = '/auth/logout';
     });
 
@@ -30,25 +201,33 @@
       .then(res => res.json())
       .then(user => {
         if (!user.error) {
-          const userDiv = document.getElementById('user');
-          userDiv.innerHTML = `<h1>Welcome, ${user.name}</h1><img src="${user.picture}">`;
-          document.getElementById('login').style.display = 'none';
-          document.getElementById('logout').style.display = '';
-          document.getElementById('user').style.display = '';
+          // Update navbar user info
+          document.getElementById('user-avatar').src = user.picture;
+          document.getElementById('user-name').textContent = user.name;
+          document.getElementById('navbar-user').classList.remove('hidden');
+          
+          // Hide login, show calendar
+          document.getElementById('login').classList.add('hidden');
+          document.getElementById('calendar').classList.remove('hidden');
         }
+      }
+    );
 
-        fetch('/calendar/today')
-          .then(res => res.json())
-          .then(events => {
-            const container = document.getElementById('calendar');
-            container.innerHTML = '';
-            events.forEach(event => {
-              const start = event.start.dateTime || event.start.date;
-              container.innerHTML += `<p>${start} — ${event.summary}</p>`;
-            });
-            document.getElementById('calendar').style.display = '';
-          }
-        );
+    fetch('/calendar/today')
+      .then(res => res.json())
+      .then(events => {
+        const container = document.getElementById('calendar-events');
+        container.innerHTML = '';
+        events.forEach(event => {
+          const start = event.start.dateTime || event.start.date;
+          const eventDiv = document.createElement('div');
+          eventDiv.className = 'event-item';
+          eventDiv.innerHTML = `
+            <span class="event-time">${start}</span>
+            <span class="event-summary">${event.summary}</span>
+          `;
+          container.appendChild(eventDiv);
+        });
       }
     );
   </script>
