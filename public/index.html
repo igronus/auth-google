@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Login with Google</title>
+  <title>Klaro SalesOne</title>
   <style>
     * {
       margin: 0;
@@ -119,9 +119,42 @@
       padding: 2rem;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      margin-top: 2rem;
-      max-width: 600px;
+      margin: 2rem auto 0;
+      max-width: 1200px;
       width: 100%;
+      overflow-x: auto;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    @media (max-width: 960px) {
+      .calendar-grid {
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .calendar-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .day-column {
+      background: #fafafa;
+      border-radius: 12px;
+      border: 1px solid #eee;
+      padding: 1rem;
+    }
+
+    .day-title {
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: #222;
+      text-align: center;
     }
 
     .calendar-title {
@@ -183,8 +216,10 @@
 
     <!-- Calendar (shown when logged in) -->
     <div class="calendar-container hidden" id="calendar">
-      <h2 class="calendar-title">Today's Events</h2>
-      <div id="calendar-events"></div>
+      <h2 class="calendar-title">Events</h2>
+      <div class="calendar-grid" id="calendar-grid">
+        <!-- Columns rendered here -->
+      </div>
     </div>
   </div>
 
@@ -213,23 +248,51 @@
       }
     );
 
-    fetch('/calendar/today')
+    fetch('/calendar/four-days')
       .then(res => res.json())
-      .then(events => {
-        const container = document.getElementById('calendar-events');
-        container.innerHTML = '';
-        events.forEach(event => {
-          const start = event.start.dateTime || event.start.date;
-          const eventDiv = document.createElement('div');
-          eventDiv.className = 'event-item';
-          eventDiv.innerHTML = `
-            <span class="event-time">${start}</span>
-            <span class="event-summary">${event.summary}</span>
-          `;
-          container.appendChild(eventDiv);
+      .then(data => {
+        const grid = document.getElementById('calendar-grid');
+        grid.innerHTML = '';
+        (data.days || []).forEach(day => {
+          const col = document.createElement('div');
+          col.className = 'day-column';
+          const title = document.createElement('div');
+          title.className = 'day-title';
+          title.textContent = day.label;
+          col.appendChild(title);
+
+          const formatEventTime = (event) => {
+            if (event.start && event.start.dateTime) {
+              const d = new Date(event.start.dateTime);
+              return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            return 'All day';
+          };
+
+          const events = day.events || [];
+          if (events.length === 0) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'event-item';
+            emptyDiv.innerHTML = `
+              <span class="event-time"></span>
+              <span class="event-summary">no events</span>
+            `;
+            col.appendChild(emptyDiv);
+          } else {
+            events.forEach(event => {
+              const eventDiv = document.createElement('div');
+              eventDiv.className = 'event-item';
+              eventDiv.innerHTML = `
+                <span class="event-time">${formatEventTime(event)}</span>
+                <span class="event-summary">${event.summary || '(no title)'} </span>
+              `;
+              col.appendChild(eventDiv);
+            });
+          }
+
+          grid.appendChild(col);
         });
-      }
-    );
+      });
   </script>
 </body>
 </html>

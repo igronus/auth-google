@@ -127,6 +127,90 @@ app.get('/calendar/today', async (req, res) => {
   res.json(eventsData.items || []);
 });
 
+// Four-day grouped events: yesterday, today, tomorrow, day after tomorrow
+app.get('/calendar/four-days', async (req, res) => {
+  if (!req.session.tokens?.access_token) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const now = new Date();
+
+    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const endOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+    const today = startOfDay(now);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const dayAfter = new Date(today);
+    dayAfter.setDate(today.getDate() + 2);
+
+    const windowStart = yesterday; // start of yesterday
+    const windowEnd = endOfDay(dayAfter); // end of day after tomorrow
+
+    const params = new URLSearchParams({
+      timeMin: windowStart.toISOString(),
+      timeMax: windowEnd.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime'
+    });
+
+    const eventsRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
+      headers: {
+        Authorization: `Bearer ${req.session.tokens.access_token}`
+      }
+    });
+
+    const eventsData = await eventsRes.json();
+    const items = Array.isArray(eventsData.items) ? eventsData.items : [];
+
+    // Group by YYYY-MM-DD (local time)
+    const toKey = (event) => {
+      const start = event.start?.dateTime || event.start?.date; // date for all-day
+      const dateObj = start?.length > 10 ? new Date(start) : new Date(start + 'T00:00:00');
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    const buckets = new Map();
+    for (const ev of items) {
+      const key = toKey(ev);
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(ev);
+    }
+
+    const formatLabel = (d, baseToday) => {
+      const delta = Math.floor((startOfDay(d) - baseToday) / (24 * 60 * 60 * 1000));
+      if (delta === -1) return 'Yesterday';
+      if (delta === 0) return 'Today';
+      if (delta === 1) return 'Tomorrow';
+      if (delta === 2) return 'Day After';
+      return d.toDateString();
+    };
+
+    const days = [yesterday, today, tomorrow, dayAfter].map((d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const key = `${y}-${m}-${day}`;
+      return {
+        key,
+        label: formatLabel(d, today),
+        events: buckets.get(key) || []
+      };
+    });
+
+    res.json({ days });
+  } catch (err) {
+    console.error('Four-days calendar error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/calendar/debug', async (req, res) => {
   if (!req.session.tokens?.access_token) {
     return res.status(401).json({ error: 'Not authenticated' });
