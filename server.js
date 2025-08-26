@@ -22,14 +22,40 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 app.use(express.static('public'));
 app.use(express.json());
 
+// Simple file-based cache for AI results
+const fs = require('fs');
+const path = require('path');
+const EVENTS_DIR = path.join(__dirname, 'events');
+if (!fs.existsSync(EVENTS_DIR)) {
+  fs.mkdirSync(EVENTS_DIR, { recursive: true });
+}
+const sanitizeEventId = (id) => (id || '').toString().replace(/[^a-zA-Z0-9_-]/g, '_');
+
 app.post('/ai', async (req, res) => {
   try {
     const { GoogleGenAI } = await import('@google/genai');
     const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
-    const { title, description, time } = req.body || {};
+    const { title, description, time, eventId } = req.body || {};
     if (!title && !description && !time) {
       return res.status(400).json({ error: 'Missing event data (title/description/time)' });
+    }
+
+    // Attempt cache read first if eventId provided
+    let cachePath;
+    if (eventId) {
+      const safeId = sanitizeEventId(eventId);
+      cachePath = path.join(EVENTS_DIR, `${safeId}.json`);
+      if (fs.existsSync(cachePath)) {
+        try {
+          const cachedRaw = fs.readFileSync(cachePath, 'utf8');
+          const cached = JSON.parse(cachedRaw);
+          return res.json({ text: cached.text, cached: true });
+        } catch (_) {
+          // fallthrough to regen on parse error
+          console.error('Failed to read from the path:', cachePath);
+        }
+      }
     }
 
     const prompt = [
@@ -56,7 +82,24 @@ app.post('/ai', async (req, res) => {
     } else {
       text = '';
     }
-    res.json({ text });
+    // Write to cache if path resolved
+    if (cachePath && text) {
+      try {
+        fs.writeFileSync(cachePath, JSON.stringify({
+          text,
+          meta: {
+            title: title || null,
+            time: time || null,
+            description: description || null,
+            generatedAt: new Date().toISOString()
+          }
+        }, null, 2), 'utf8');
+      } catch (e) {
+        // ignore cache write errors
+        console.error('Failed to writo to the path:', cachePath);
+      }
+    }
+    res.json({ text, cached: false });
   } catch (error) {
     console.error('AI endpoint error:', error);
     res.status(500).json({ error: error.message });

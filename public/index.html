@@ -331,7 +331,7 @@
             return 'All day';
           };
 
-          const openEventModal = async ({ title, time, description }) => {
+          const openEventModal = async ({ title, time, description, eventId }) => {
             const modal = document.getElementById('event-modal');
             document.getElementById('modal-title').textContent = title || '(no title)';
             document.getElementById('modal-time').textContent = time || '';
@@ -344,7 +344,7 @@
               const aiRes = await fetch('/ai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, time, description })
+                body: JSON.stringify({ title, time, description, eventId })
               });
               const aiData = await aiRes.json();
               if (aiData && aiData.text) {
@@ -405,7 +405,8 @@
                 openEventModal({
                   title: event.summary || '(no title)',
                   time: formatEventTime(event),
-                  description: event.description || ''
+                  description: event.description || '',
+                  eventId: event.id,
                 });
               });
               col.appendChild(eventDiv);
