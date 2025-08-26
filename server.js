@@ -1,4 +1,5 @@
 require('dotenv').config();
+
 const express = require('express');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const app = express();
@@ -19,6 +20,39 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 app.use(express.static('public'));
+
+app.get('/ai', async (req, res) => {
+  try {
+    const { GoogleGenAI } = await import('@google/genai');
+    const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+
+    const prompt = "Explain how AI works in a few words.";
+
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-exp",
+      contents: [{ role: "user", parts: [{ text: prompt }] }]
+    });
+
+    console.log('Full result:', JSON.stringify(result, null, 2));
+    console.log('Result type:', typeof result);
+    console.log('Result keys:', Object.keys(result || {}));
+
+    let text;
+    if (result?.response?.text) {
+      text = result.response.text;
+    } else if (result?.text) {
+      text = result.text;
+    } else if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      text = result.candidates[0].content.parts[0].text;
+    } else {
+      text = 'Response structure: ' + JSON.stringify(result);
+    }
+    res.json({ text });
+  } catch (error) {
+    console.error('AI endpoint error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.get('/me', (req, res) => {
   if (req.session.user && JSON.stringify(req.session.user) !== '{}') {
