@@ -331,12 +331,34 @@
             return 'All day';
           };
 
-          const openEventModal = ({ title, time, description }) => {
+          const openEventModal = async ({ title, time, description }) => {
             const modal = document.getElementById('event-modal');
             document.getElementById('modal-title').textContent = title || '(no title)';
             document.getElementById('modal-time').textContent = time || '';
             const descEl = document.getElementById('modal-description');
-            descEl.textContent = description || '(no description)';
+            const baseDesc = description || '(no description)';
+            descEl.textContent = baseDesc;
+
+            // Fetch AI augmentation
+            try {
+              const aiRes = await fetch('/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, time, description })
+              });
+              const aiData = await aiRes.json();
+              if (aiData && aiData.text) {
+                const aiBlock = document.createElement('div');
+                aiBlock.style.marginTop = '0.75rem';
+                aiBlock.style.paddingTop = '0.75rem';
+                aiBlock.style.borderTop = '1px solid #eee';
+                aiBlock.style.color = '#444';
+                aiBlock.innerText = aiData.text;
+                descEl.appendChild(aiBlock);
+              }
+            } catch (e) {
+              // ignore AI errors silently for UI
+            }
 
             modal.classList.remove('hidden');
             modal.setAttribute('aria-hidden', 'false');

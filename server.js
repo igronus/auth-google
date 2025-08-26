@@ -20,24 +20,33 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 app.use(express.static('public'));
+app.use(express.json());
 
-app.get('/ai', async (req, res) => {
+app.post('/ai', async (req, res) => {
   try {
     const { GoogleGenAI } = await import('@google/genai');
     const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
-    const prompt = "Explain how AI works in a few words.";
+    const { title, description, time } = req.body || {};
+    if (!title && !description && !time) {
+      return res.status(400).json({ error: 'Missing event data (title/description/time)' });
+    }
+
+    const prompt = [
+      'You are an assistant that augments Google Calendar events with helpful context.',
+      'Given the event details, provide a concise 1-3 sentence suggestion or context:',
+      `- Title: ${title || '(none)'}`,
+      `- Time: ${time || '(all day or unknown)'}`,
+      `- Description: ${description || '(none)'}`,
+      'Return plain text only. Keep it short and actionable.'
+    ].join('\n');
 
     const result = await genAI.models.generateContent({
       model: "gemini-2.0-flash-exp",
       contents: [{ role: "user", parts: [{ text: prompt }] }]
     });
 
-    console.log('Full result:', JSON.stringify(result, null, 2));
-    console.log('Result type:', typeof result);
-    console.log('Result keys:', Object.keys(result || {}));
-
-    let text;
+    let text = '';
     if (result?.response?.text) {
       text = result.response.text;
     } else if (result?.text) {
@@ -45,7 +54,7 @@ app.get('/ai', async (req, res) => {
     } else if (result?.candidates?.[0]?.content?.parts?.[0]?.text) {
       text = result.candidates[0].content.parts[0].text;
     } else {
-      text = 'Response structure: ' + JSON.stringify(result);
+      text = '';
     }
     res.json({ text });
   } catch (error) {
