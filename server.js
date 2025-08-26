@@ -2,6 +2,19 @@ require('dotenv').config();
 
 const express = require('express');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+// Ensure fetch and related globals exist (needed for some environments where @google/genai relies on global fetch)
+let fetchGlobalsReady;
+async function ensureFetchGlobals() {
+  if (!fetchGlobalsReady) {
+    fetchGlobalsReady = import('node-fetch').then((mod) => {
+      if (!globalThis.fetch) globalThis.fetch = mod.default;
+      if (!globalThis.Headers) globalThis.Headers = mod.Headers;
+      if (!globalThis.Request) globalThis.Request = mod.Request;
+      if (!globalThis.Response) globalThis.Response = mod.Response;
+    }).catch(() => {});
+  }
+  return fetchGlobalsReady;
+}
 const app = express();
 
 const session = require('express-session');
@@ -33,6 +46,7 @@ const sanitizeEventId = (id) => (id || '').toString().replace(/[^a-zA-Z0-9_-]/g,
 
 app.post('/ai', async (req, res) => {
   try {
+    await ensureFetchGlobals();
     const { GoogleGenAI } = await import('@google/genai');
     const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
